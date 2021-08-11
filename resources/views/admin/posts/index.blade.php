@@ -94,7 +94,7 @@
         </div>
     </div>
 </div>
-
+<br>
 @if(isset($filters))
     {{ $posts->appends($filters)->links() }}
 @else
