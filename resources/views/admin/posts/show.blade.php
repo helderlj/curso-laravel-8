@@ -1,3 +1,5 @@
+@extends('admin.layouts.app')
+
 <h1>Detalhes do post {{ $post->id }}</h1>
 <hr>
 <span><b>Titulo: </b>{{ $post->title }}</span><br>

@@ -16,7 +16,7 @@ class PostController extends Controller
     public function index()
     {
         //
-        $posts = Post::get();
+        $posts = Post::orderBy('id', 'ASC')->paginate(5);
         return view('admin.posts.index', compact('posts'));
     }
 
@@ -39,8 +39,13 @@ class PostController extends Controller
      */
     public function store(StoreUpdatePost $request)
     {
-        //
-        Post::create($request->all());
+        $data = $request->all();
+        if ($request->image->isValid()) {
+            $fileName = \Str::of($request->title)->slug('-') . '.' . $request->image->getClientOriginalExtension();
+            $image = $request->image->storeAs('posts', $fileName);
+            $data['image'] = $image;
+            Post::create($data);
+        }
         return redirect()->route('posts.index');
     }
 
@@ -84,7 +89,19 @@ class PostController extends Controller
         if (!$post = Post::find($id)) {
             return redirect()->route('posts.index');
         }
-        $post->update($request->all());
+
+        $data = $request->all();
+
+        if ($request->image && $request->image->isValid()) {
+            if (\Storage::exists($post->image)) {
+                \Storage::delete($post->image);
+            }
+            $fileName = \Str::of($request->title)->slug('-') . '.' . $request->image->getClientOriginalExtension();
+            $image = $request->image->storeAs('posts', $fileName);
+            $data['image'] = $image;
+        }
+
+        $post->update($data);
         return redirect()->route('posts.index')->with('message', 'Post atualizado com sucesso');
     }
 
@@ -96,10 +113,23 @@ class PostController extends Controller
      */
     public function destroy($id)
     {
-        if (!$post = Post::find($id)) {
-            return redirect()->route('posts.index');
+        if ($post = Post::find($id)) {
+            $post->delete();
+            if (\Storage::exists($post->image)) {
+                \Storage::delete($post->image);
+            }
+            return redirect()->route('posts.index')->with('message', 'Post deletado com sucesso');
         }
-        $post->delete();
-        return redirect()->route('posts.index')->with('message', 'Post deletado com sucesso');
+        return redirect()->route('posts.index');
+    }
+
+
+    public function search(Request $request)
+    {
+        $filters = $request->except('_token');
+        $posts = Post::where('title', 'LIKE', "%{$request->search}%")
+            ->orWhere('content', 'LIKE', "%{$request->search}%")
+            ->paginate();
+        return view('admin.posts.index', compact('posts', 'filters'));
     }
 }
